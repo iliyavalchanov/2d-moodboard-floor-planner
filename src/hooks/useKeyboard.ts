@@ -5,6 +5,7 @@ import { useSelectionStore } from "@/stores/useSelectionStore";
 import { useWallStore } from "@/stores/useWallStore";
 import { useFixtureStore } from "@/stores/useFixtureStore";
 import { useMoodboardStore } from "@/stores/useMoodboardStore";
+import { useHistoryStore } from "@/stores/useHistoryStore";
 
 interface KeyboardConfig {
   wallDrawingCancel: () => void;
@@ -18,6 +19,21 @@ export function useKeyboard(config: KeyboardConfig) {
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement
       ) {
+        return;
+      }
+
+      // Undo / Redo
+      if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        e.preventDefault();
+        useHistoryStore.getState().undo();
+        return;
+      }
+      if (
+        (e.key === "z" && (e.metaKey || e.ctrlKey) && e.shiftKey) ||
+        (e.key === "y" && (e.metaKey || e.ctrlKey))
+      ) {
+        e.preventDefault();
+        useHistoryStore.getState().redo();
         return;
       }
 
@@ -37,6 +53,9 @@ export function useKeyboard(config: KeyboardConfig) {
         case "Backspace": {
           const { selectedItems, clearSelection } =
             useSelectionStore.getState();
+          if (selectedItems.length > 0) {
+            useHistoryStore.getState().push();
+          }
           for (const item of selectedItems) {
             switch (item.type) {
               case "node":

@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Group, Line, Rect, Text } from "react-konva";
 import type { WallSegment as WallSegmentType } from "@/types/geometry";
 import { useWallStore } from "@/stores/useWallStore";
+import { useCanvasStore } from "@/stores/useCanvasStore";
 import { useSelectionStore } from "@/stores/useSelectionStore";
+import { ToolMode } from "@/types/canvas";
 import { WALL_COLORS, WALL_THICKNESS, MEASUREMENT_BG_COLOR, MEASUREMENT_TEXT_COLOR, MEASUREMENT_FONT_SIZE } from "@/constants/styles";
 import { midpoint, angle } from "@/utils/geometry";
 import { formatLength } from "@/utils/measurements";
@@ -36,8 +38,11 @@ export default function WallSegment({ segment }: Props) {
         strokeWidth={thickness}
         hitStrokeWidth={Math.max(thickness, 14)}
         onClick={(e) => {
-          e.cancelBubble = true;
-          select({ id: segment.id, type: "segment" });
+          const mode = useCanvasStore.getState().toolMode;
+          if (mode === ToolMode.Select) {
+            e.cancelBubble = true;
+            select({ id: segment.id, type: "segment" });
+          }
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}

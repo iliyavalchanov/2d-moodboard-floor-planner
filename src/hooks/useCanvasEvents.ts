@@ -7,6 +7,7 @@ import { useSelectionStore } from "@/stores/useSelectionStore";
 import { useMoodboardStore } from "@/stores/useMoodboardStore";
 import { useFixtureStore } from "@/stores/useFixtureStore";
 import { useWallStore } from "@/stores/useWallStore";
+import { useHistoryStore } from "@/stores/useHistoryStore";
 import { snapToWall } from "@/utils/snap";
 import { WALL_SNAP_THRESHOLD } from "@/constants/canvas";
 
@@ -51,6 +52,7 @@ export function useCanvasEvents(config: CanvasEventsConfig) {
           break;
 
         case ToolMode.DrawWall:
+          useHistoryStore.getState().push();
           config.wallDrawing.handleClick(pos);
           break;
 
@@ -58,6 +60,7 @@ export function useCanvasEvents(config: CanvasEventsConfig) {
           const { segments, nodes } = useWallStore.getState();
           const snap = snapToWall(pos, segments, nodes, WALL_SNAP_THRESHOLD);
           if (snap) {
+            useHistoryStore.getState().push();
             useFixtureStore
               .getState()
               .addDoor(
@@ -75,6 +78,7 @@ export function useCanvasEvents(config: CanvasEventsConfig) {
           const { segments, nodes } = useWallStore.getState();
           const snap = snapToWall(pos, segments, nodes, WALL_SNAP_THRESHOLD);
           if (snap) {
+            useHistoryStore.getState().push();
             useFixtureStore
               .getState()
               .addWindow(
@@ -93,6 +97,7 @@ export function useCanvasEvents(config: CanvasEventsConfig) {
           break;
 
         case ToolMode.AddText:
+          useHistoryStore.getState().push();
           useMoodboardStore.getState().addText(pos.x, pos.y);
           break;
       }

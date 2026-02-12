@@ -51,6 +51,7 @@ export default function CanvasWorkspace() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [projectsModalOpen, setProjectsModalOpen] = useState(false);
+  const [spaceHeld, setSpaceHeld] = useState(false);
 
   const { handleWheel } = usePanZoom();
   const wallDrawing = useWallDrawing();
@@ -77,6 +78,31 @@ export default function CanvasWorkspace() {
   );
   useKeyboard(keyboardConfig);
   useClipboardPaste();
+
+  // Space to pan
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.code === "Space" &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        setSpaceHeld(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setSpaceHeld(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
 
   // Initialize auth on mount
   useEffect(() => {
@@ -184,7 +210,7 @@ export default function CanvasWorkspace() {
           y={viewport.y}
           scaleX={viewport.scale}
           scaleY={viewport.scale}
-          draggable={toolMode === ToolMode.Select}
+          draggable={toolMode === ToolMode.Select || spaceHeld}
           onWheel={handleWheel}
           onClick={handleStageClick}
           onMouseMove={handleStageMouseMove}
@@ -198,7 +224,7 @@ export default function CanvasWorkspace() {
               });
             }
           }}
-          style={{ cursor: CURSOR_MAP[toolMode] }}
+          style={{ cursor: spaceHeld ? "grab" : CURSOR_MAP[toolMode] }}
         >
           <GridLayer />
           <WallLayer />
