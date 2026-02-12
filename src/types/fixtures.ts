@@ -7,6 +7,8 @@ export interface Door {
   y: number;
   rotation: number;
   width: number;
+  /** If true, swing arc is mirrored to the other side */
+  flipped?: boolean;
 }
 
 export interface Window {

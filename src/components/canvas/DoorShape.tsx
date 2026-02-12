@@ -3,6 +3,8 @@
 import { Group, Rect, Arc } from "react-konva";
 import type { Door } from "@/types/fixtures";
 import { useSelectionStore } from "@/stores/useSelectionStore";
+import { useFixtureStore } from "@/stores/useFixtureStore";
+import { useHistoryStore } from "@/stores/useHistoryStore";
 import { DOOR_DEPTH, DOOR_COLOR } from "@/constants/styles";
 
 interface Props {
@@ -13,14 +15,23 @@ export default function DoorShape({ door }: Props) {
   const isSelected = useSelectionStore((s) => s.isSelected(door.id));
   const select = useSelectionStore((s) => s.select);
 
+  const flipped = door.flipped ?? false;
+  const scaleY = flipped ? -1 : 1;
+
   return (
     <Group
       x={door.x}
       y={door.y}
       rotation={door.rotation}
+      scaleY={scaleY}
       onClick={(e) => {
         e.cancelBubble = true;
         select({ id: door.id, type: "door" });
+      }}
+      onDblClick={(e) => {
+        e.cancelBubble = true;
+        useHistoryStore.getState().push();
+        useFixtureStore.getState().updateDoor(door.id, { flipped: !flipped });
       }}
     >
       {/* Door panel */}
