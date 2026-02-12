@@ -6,10 +6,10 @@ export const WALL_COLORS: Record<WallType, string> = {
   [WallType.Exterior]: "#1F2937",
 };
 
-/** Wall thickness in px by type */
+/** Wall thickness in px by type (12cm = 6px, 25cm = 12.5px at 50px/m) */
 export const WALL_THICKNESS: Record<WallType, number> = {
   [WallType.Interior]: 6,
-  [WallType.Exterior]: 12,
+  [WallType.Exterior]: 12.5,
 };
 
 /** Wall node radius */
