@@ -47,7 +47,7 @@ export default function ImageUrlModal({ onClose }: Props) {
         }
 
         const displayTitle = data.title || data.domain || "";
-        useMoodboardStore.getState().addImage(data.imageUrl, centerX, centerY, 200, 200, {
+        useMoodboardStore.getState().addImage(data.imageUrl, centerX, centerY, 220, 280, {
           sourceUrl: trimmed,
           title: displayTitle,
         });

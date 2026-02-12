@@ -46,6 +46,14 @@ export const SELECTION_COLOR = "#3B82F6";
 export const SELECTION_RECT_FILL = "rgba(59,130,246,0.1)";
 export const SELECTION_RECT_STROKE = "#3B82F6";
 
+/** Moodboard link card */
+export const CARD_FOOTER_COLOR = "#555555";
+export const CARD_TITLE_COLOR = "#FFFFFF";
+export const CARD_DOMAIN_COLOR = "#9CA3AF";
+export const CARD_FOOTER_RATIO = 0.22;
+export const CARD_DEFAULT_WIDTH = 220;
+export const CARD_DEFAULT_HEIGHT = 280;
+
 /** Moodboard text defaults */
 export const DEFAULT_FONT_SIZE = 18;
 export const DEFAULT_FONT_FAMILY = "Inter, sans-serif";

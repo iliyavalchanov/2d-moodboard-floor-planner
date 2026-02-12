@@ -24,7 +24,6 @@ import InteractionLayer from "./InteractionLayer";
 import Toolbar from "../toolbar/Toolbar";
 import StatusBar from "../ui/StatusBar";
 import ImageUrlModal from "../ui/ImageUrlModal";
-import ImageSourceTooltip from "../ui/ImageSourceTooltip";
 import ContextMenu from "../ui/ContextMenu";
 import AuthModal from "../auth/AuthModal";
 import ProjectListModal from "../projects/ProjectListModal";
@@ -240,7 +239,6 @@ export default function CanvasWorkspace() {
             stageRef={stageRef}
           />
         </Stage>
-        <ImageSourceTooltip stageRef={stageRef} />
       </div>
       <StatusBar />
       {imageModalOpen && (

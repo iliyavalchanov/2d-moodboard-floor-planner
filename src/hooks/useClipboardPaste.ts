@@ -59,7 +59,7 @@ export function useClipboardPaste() {
             (stageSize.height / 2 - viewport.y) / viewport.scale;
 
           const displayTitle = title || domain || "";
-          useMoodboardStore.getState().addImage(imageUrl, centerX, centerY, 200, 200, {
+          useMoodboardStore.getState().addImage(imageUrl, centerX, centerY, 220, 280, {
             sourceUrl: text.trim(),
             title: displayTitle,
           });
