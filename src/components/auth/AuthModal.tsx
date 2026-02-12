@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 interface Props {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export default function AuthModal({ onClose }: Props) {
@@ -70,13 +70,15 @@ export default function AuthModal({ onClose }: Props) {
           )}
 
           <div className="flex justify-end gap-2 mt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-            >
-              Cancel
-            </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                Cancel
+              </button>
+            )}
             <button
               type="submit"
               disabled={!email.trim() || !password.trim() || loading}

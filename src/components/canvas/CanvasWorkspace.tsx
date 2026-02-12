@@ -104,11 +104,6 @@ export default function CanvasWorkspace() {
     };
   }, []);
 
-  // Initialize auth on mount
-  useEffect(() => {
-    useAuthStore.getState().initialize();
-  }, []);
-
   // Auto-load most recent project when user signs in
   useEffect(() => {
     const unsub = useAuthStore.subscribe((state, prev) => {
