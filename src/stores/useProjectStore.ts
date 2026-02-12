@@ -78,6 +78,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
         lastSavedAt: data.updated_at,
         error: null,
       }));
+      try { localStorage.setItem("lastProjectId", data.id); } catch {}
       return data.id;
     }
     return null;
@@ -93,6 +94,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
 
     if (!error && data) {
       restoreProjectState(data.state);
+      try { localStorage.setItem("lastProjectId", data.id); } catch {}
       set({
         currentProject: data,
         loading: false,

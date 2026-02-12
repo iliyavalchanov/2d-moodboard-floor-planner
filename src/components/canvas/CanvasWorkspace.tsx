@@ -104,21 +104,32 @@ export default function CanvasWorkspace() {
     };
   }, []);
 
-  // Auto-load most recent project when user signs in
+  // Auto-load last project (or create "Project 1") when user signs in
   useEffect(() => {
     const unsub = useAuthStore.subscribe((state, prev) => {
       if (state.user && !prev.user) {
-        // User just signed in — close auth modal, fetch projects, load most recent
         setAuthModalOpen(false);
-        useProjectStore.getState().fetchProjects().then(() => {
-          const projects = useProjectStore.getState().projects;
-          if (projects.length > 0 && !useProjectStore.getState().currentProject) {
-            useProjectStore.getState().loadProject(projects[0].id);
+        useProjectStore.getState().fetchProjects().then(async () => {
+          const { projects, currentProject } = useProjectStore.getState();
+          if (currentProject) return;
+
+          if (projects.length === 0) {
+            // First time — auto-create a default project
+            const id = await useProjectStore.getState().createProject("Project 1");
+            if (id) localStorage.setItem("lastProjectId", id);
+            return;
           }
+
+          // Try to load the last opened project
+          const lastId = localStorage.getItem("lastProjectId");
+          const target = lastId && projects.find((p) => p.id === lastId)
+            ? lastId
+            : projects[0].id;
+          await useProjectStore.getState().loadProject(target);
+          localStorage.setItem("lastProjectId", target);
         });
       }
       if (!state.user && prev.user) {
-        // User signed out — clear project state
         useProjectStore.setState({
           currentProject: null,
           projects: [],
