@@ -19,6 +19,7 @@ interface ProjectState {
   saveProject: () => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   renameProject: (id: string, name: string) => Promise<void>;
+  initializeProject: () => Promise<void>;
   markUnsaved: () => void;
   clearError: () => void;
 }
@@ -168,6 +169,24 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
             : prev.currentProject,
       }));
     }
+  },
+
+  initializeProject: async () => {
+    await get().fetchProjects();
+    const { projects, currentProject } = get();
+    if (currentProject) return;
+
+    if (projects.length === 0) {
+      await get().createProject("Project 1");
+      return;
+    }
+
+    const lastId = localStorage.getItem("lastProjectId");
+    const target =
+      lastId && projects.find((p) => p.id === lastId)
+        ? lastId
+        : projects[0].id;
+    await get().loadProject(target);
   },
 
   markUnsaved: () => {

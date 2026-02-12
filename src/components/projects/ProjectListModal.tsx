@@ -6,9 +6,10 @@ import { resetToEmpty } from "@/utils/serialization";
 
 interface Props {
   onClose: () => void;
+  required?: boolean;
 }
 
-export default function ProjectListModal({ onClose }: Props) {
+export default function ProjectListModal({ onClose, required }: Props) {
   const projects = useProjectStore((s) => s.projects);
   const currentProject = useProjectStore((s) => s.currentProject);
   const loading = useProjectStore((s) => s.loading);
@@ -29,6 +30,12 @@ export default function ProjectListModal({ onClose }: Props) {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  useEffect(() => {
+    if (required && projects.length === 0 && !loading) {
+      setShowNewInput(true);
+    }
+  }, [required, projects.length, loading]);
 
   const handleLoad = async (id: string) => {
     await loadProject(id);
@@ -74,16 +81,24 @@ export default function ProjectListModal({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={required ? undefined : onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">My Projects</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-          >
-            &times;
-          </button>
+          {!required && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            >
+              &times;
+            </button>
+          )}
         </div>
 
         {/* New project input */}

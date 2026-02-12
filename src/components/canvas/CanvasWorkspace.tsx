@@ -49,10 +49,16 @@ export default function CanvasWorkspace() {
   const setStageSize = useCanvasStore((s) => s.setStageSize);
   const toolMode = useCanvasStore((s) => s.toolMode);
 
+  const user = useAuthStore((s) => s.user);
+  const currentProject = useProjectStore((s) => s.currentProject);
+  const projectLoading = useProjectStore((s) => s.loading);
+
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [projectsModalOpen, setProjectsModalOpen] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
+
+  const forceProjectPicker = !!user && !currentProject && !projectLoading;
 
   const { handleWheel } = usePanZoom();
   const wallDrawing = useWallDrawing();
@@ -105,30 +111,12 @@ export default function CanvasWorkspace() {
     };
   }, []);
 
-  // Auto-load last project (or create "Project 1") when user signs in
+  // Auto-load project on sign-in
   useEffect(() => {
     const unsub = useAuthStore.subscribe((state, prev) => {
       if (state.user && !prev.user) {
         setAuthModalOpen(false);
-        useProjectStore.getState().fetchProjects().then(async () => {
-          const { projects, currentProject } = useProjectStore.getState();
-          if (currentProject) return;
-
-          if (projects.length === 0) {
-            // First time — auto-create a default project
-            const id = await useProjectStore.getState().createProject("Project 1");
-            if (id) localStorage.setItem("lastProjectId", id);
-            return;
-          }
-
-          // Try to load the last opened project
-          const lastId = localStorage.getItem("lastProjectId");
-          const target = lastId && projects.find((p) => p.id === lastId)
-            ? lastId
-            : projects[0].id;
-          await useProjectStore.getState().loadProject(target);
-          localStorage.setItem("lastProjectId", target);
-        });
+        useProjectStore.getState().initializeProject();
       }
       if (!state.user && prev.user) {
         useProjectStore.setState({
@@ -140,6 +128,15 @@ export default function CanvasWorkspace() {
       }
     });
     return unsub;
+  }, []);
+
+  // Auto-load project on mount (handles page refresh while already authenticated)
+  useEffect(() => {
+    const user = useAuthStore.getState().user;
+    const currentProject = useProjectStore.getState().currentProject;
+    if (user && !currentProject) {
+      useProjectStore.getState().initializeProject();
+    }
   }, []);
 
   // Autosave: subscribe to store changes with debounce
@@ -259,8 +256,11 @@ export default function CanvasWorkspace() {
       {authModalOpen && (
         <AuthModal onClose={() => setAuthModalOpen(false)} />
       )}
-      {projectsModalOpen && (
-        <ProjectListModal onClose={() => setProjectsModalOpen(false)} />
+      {(projectsModalOpen || forceProjectPicker) && (
+        <ProjectListModal
+          onClose={() => setProjectsModalOpen(false)}
+          required={forceProjectPicker}
+        />
       )}
     </div>
   );
