@@ -1,8 +1,8 @@
 /** Pixels per meter — 50 canvas px = 1 m */
 export const PIXELS_PER_METER = 50;
 
-/** Grid dot spacing in pixels */
-export const GRID_SIZE = 25;
+/** Grid snap spacing in pixels (1 cm = 0.5px at 50px/m) */
+export const GRID_SIZE = 0.5;
 
 /** Snap threshold in pixels */
 export const SNAP_THRESHOLD = 10;
