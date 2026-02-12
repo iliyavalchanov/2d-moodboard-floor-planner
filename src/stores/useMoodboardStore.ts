@@ -20,6 +20,11 @@ interface MoodboardState {
   addText: (x: number, y: number) => string;
   removeText: (id: string) => void;
   updateText: (id: string, updates: Partial<MoodboardText>) => void;
+
+  /** Replace all moodboard data from a saved project */
+  loadState: (data: { images: Record<string, MoodboardImage>; texts: Record<string, MoodboardText> }) => void;
+  /** Clear all moodboard items */
+  resetState: () => void;
 }
 
 export const useMoodboardStore = create<MoodboardState>()(
@@ -78,6 +83,20 @@ export const useMoodboardStore = create<MoodboardState>()(
         if (state.texts[id]) {
           Object.assign(state.texts[id], updates);
         }
+      });
+    },
+
+    loadState: (data) => {
+      set((state) => {
+        state.images = data.images ?? {};
+        state.texts = data.texts ?? {};
+      });
+    },
+
+    resetState: () => {
+      set((state) => {
+        state.images = {};
+        state.texts = {};
       });
     },
   }))

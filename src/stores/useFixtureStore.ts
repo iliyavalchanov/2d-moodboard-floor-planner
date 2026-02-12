@@ -30,6 +30,11 @@ interface FixtureState {
 
   /** Remove all fixtures attached to a wall segment */
   removeFixturesForSegment: (segmentId: string) => void;
+
+  /** Replace all fixture data from a saved project */
+  loadState: (data: { doors: Record<string, Door>; windows: Record<string, Window> }) => void;
+  /** Clear all fixtures */
+  resetState: () => void;
 }
 
 export const useFixtureStore = create<FixtureState>()(
@@ -105,6 +110,20 @@ export const useFixtureStore = create<FixtureState>()(
         for (const [id, win] of Object.entries(state.windows)) {
           if (win.wallSegmentId === segmentId) delete state.windows[id];
         }
+      });
+    },
+
+    loadState: (data) => {
+      set((state) => {
+        state.doors = data.doors ?? {};
+        state.windows = data.windows ?? {};
+      });
+    },
+
+    resetState: () => {
+      set((state) => {
+        state.doors = {};
+        state.windows = {};
       });
     },
   }))

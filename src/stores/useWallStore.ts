@@ -26,6 +26,11 @@ interface WallState {
     y: number,
     threshold: number
   ) => WallNode | null;
+
+  /** Replace all wall data from a saved project */
+  loadState: (data: { nodes: Record<string, WallNode>; segments: Record<string, WallSegment> }) => void;
+  /** Clear all walls */
+  resetState: () => void;
 }
 
 const initialData = getInitialWallData();
@@ -94,6 +99,20 @@ export const useWallStore = create<WallState>()(
         if (dist <= threshold) return node;
       }
       return null;
+    },
+
+    loadState: (data) => {
+      set((state) => {
+        state.nodes = data.nodes ?? {};
+        state.segments = data.segments ?? {};
+      });
+    },
+
+    resetState: () => {
+      set((state) => {
+        state.nodes = {};
+        state.segments = {};
+      });
     },
   }))
 );

@@ -5,6 +5,11 @@ import { Stage } from "react-konva";
 import type Konva from "konva";
 import { ToolMode } from "@/types/canvas";
 import { useCanvasStore } from "@/stores/useCanvasStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useProjectStore } from "@/stores/useProjectStore";
+import { useWallStore } from "@/stores/useWallStore";
+import { useFixtureStore } from "@/stores/useFixtureStore";
+import { useMoodboardStore } from "@/stores/useMoodboardStore";
 import { usePanZoom } from "@/hooks/usePanZoom";
 import { useWallDrawing } from "@/hooks/useWallDrawing";
 import { useCanvasEvents } from "@/hooks/useCanvasEvents";
@@ -20,6 +25,8 @@ import Toolbar from "../toolbar/Toolbar";
 import StatusBar from "../ui/StatusBar";
 import ImageUrlModal from "../ui/ImageUrlModal";
 import ContextMenu from "../ui/ContextMenu";
+import AuthModal from "../auth/AuthModal";
+import ProjectListModal from "../projects/ProjectListModal";
 
 const CURSOR_MAP: Record<ToolMode, string> = {
   [ToolMode.Select]: "default",
@@ -29,6 +36,8 @@ const CURSOR_MAP: Record<ToolMode, string> = {
   [ToolMode.AddImage]: "cell",
   [ToolMode.AddText]: "text",
 };
+
+const AUTOSAVE_DELAY = 2000;
 
 export default function CanvasWorkspace() {
   const stageRef = useRef<Konva.Stage>(null);
@@ -40,6 +49,8 @@ export default function CanvasWorkspace() {
   const toolMode = useCanvasStore((s) => s.toolMode);
 
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [projectsModalOpen, setProjectsModalOpen] = useState(false);
 
   const { handleWheel } = usePanZoom();
   const wallDrawing = useWallDrawing();
@@ -66,6 +77,64 @@ export default function CanvasWorkspace() {
   );
   useKeyboard(keyboardConfig);
   useClipboardPaste();
+
+  // Initialize auth on mount
+  useEffect(() => {
+    useAuthStore.getState().initialize();
+  }, []);
+
+  // Auto-load most recent project when user signs in
+  useEffect(() => {
+    const unsub = useAuthStore.subscribe((state, prev) => {
+      if (state.user && !prev.user) {
+        // User just signed in — close auth modal, fetch projects, load most recent
+        setAuthModalOpen(false);
+        useProjectStore.getState().fetchProjects().then(() => {
+          const projects = useProjectStore.getState().projects;
+          if (projects.length > 0 && !useProjectStore.getState().currentProject) {
+            useProjectStore.getState().loadProject(projects[0].id);
+          }
+        });
+      }
+      if (!state.user && prev.user) {
+        // User signed out — clear project state
+        useProjectStore.setState({
+          currentProject: null,
+          projects: [],
+          hasUnsavedChanges: false,
+          lastSavedAt: null,
+        });
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Autosave: subscribe to store changes with debounce
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    const handleChange = () => {
+      const { currentProject } = useProjectStore.getState();
+      if (!currentProject) return;
+
+      useProjectStore.getState().markUnsaved();
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        useProjectStore.getState().saveProject();
+      }, AUTOSAVE_DELAY);
+    };
+
+    const unsubs = [
+      useWallStore.subscribe(handleChange),
+      useFixtureStore.subscribe(handleChange),
+      useMoodboardStore.subscribe(handleChange),
+    ];
+
+    return () => {
+      clearTimeout(timer);
+      unsubs.forEach((fn) => fn());
+    };
+  }, []);
 
   // Resize observer
   useEffect(() => {
@@ -102,7 +171,10 @@ export default function CanvasWorkspace() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-50">
-      <Toolbar />
+      <Toolbar
+        onSignInClick={() => setAuthModalOpen(true)}
+        onProjectsClick={() => setProjectsModalOpen(true)}
+      />
       <div ref={containerRef} className="w-full h-full">
         <Stage
           ref={stageRef}
@@ -149,6 +221,12 @@ export default function CanvasWorkspace() {
           canvasPosition={menu.canvasPosition}
           onClose={hideContextMenu}
         />
+      )}
+      {authModalOpen && (
+        <AuthModal onClose={() => setAuthModalOpen(false)} />
+      )}
+      {projectsModalOpen && (
+        <ProjectListModal onClose={() => setProjectsModalOpen(false)} />
       )}
     </div>
   );
