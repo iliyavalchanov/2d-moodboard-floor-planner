@@ -15,7 +15,7 @@ function extractMeta(html: string, property: string): string | null {
 }
 
 /** Header sets to try, in order. Sites like IKEA block generic fetches but allow Googlebot. */
-const HEADER_STRATEGIES = [
+const HEADER_STRATEGIES: Record<string, string>[] = [
   {
     "User-Agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
