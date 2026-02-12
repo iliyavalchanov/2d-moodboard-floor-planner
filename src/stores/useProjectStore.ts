@@ -11,6 +11,7 @@ interface ProjectState {
   loading: boolean;
   lastSavedAt: string | null;
   hasUnsavedChanges: boolean;
+  error: string | null;
 
   fetchProjects: () => Promise<void>;
   createProject: (name: string) => Promise<string | null>;
@@ -19,6 +20,7 @@ interface ProjectState {
   deleteProject: (id: string) => Promise<void>;
   renameProject: (id: string, name: string) => Promise<void>;
   markUnsaved: () => void;
+  clearError: () => void;
 }
 
 export const useProjectStore = create<ProjectState>()((set, get) => ({
@@ -28,6 +30,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   loading: false,
   lastSavedAt: null,
   hasUnsavedChanges: false,
+  error: null,
 
   fetchProjects: async () => {
     const user = useAuthStore.getState().user;
@@ -51,6 +54,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     const user = useAuthStore.getState().user;
     if (!user) return null;
 
+    set({ error: null });
     const state = gatherProjectState();
     const { data, error } = await supabase
       .from("projects")
@@ -62,12 +66,17 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
       .select()
       .single();
 
-    if (!error && data) {
+    if (error) {
+      set({ error: error.message });
+      return null;
+    }
+    if (data) {
       set((prev) => ({
         currentProject: data,
         projects: [data, ...prev.projects],
         hasUnsavedChanges: false,
         lastSavedAt: data.updated_at,
+        error: null,
       }));
       return data.id;
     }
@@ -164,4 +173,6 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
       set({ hasUnsavedChanges: true });
     }
   },
+
+  clearError: () => set({ error: null }),
 }));

@@ -18,6 +18,9 @@ export default function ProjectListModal({ onClose }: Props) {
   const deleteProject = useProjectStore((s) => s.deleteProject);
   const renameProject = useProjectStore((s) => s.renameProject);
 
+  const error = useProjectStore((s) => s.error);
+  const clearError = useProjectStore((s) => s.clearError);
+
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [showNewInput, setShowNewInput] = useState(false);
@@ -34,11 +37,14 @@ export default function ProjectListModal({ onClose }: Props) {
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
+    clearError();
     resetToEmpty();
-    await createProject(newName.trim());
-    setShowNewInput(false);
-    setNewName("");
-    onClose();
+    const id = await createProject(newName.trim());
+    if (id) {
+      setShowNewInput(false);
+      setNewName("");
+      onClose();
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -116,6 +122,10 @@ export default function ProjectListModal({ onClose }: Props) {
           >
             + New Project
           </button>
+        )}
+
+        {error && (
+          <p className="text-sm text-red-600 mb-3 px-1">{error}</p>
         )}
 
         {/* Project list */}
