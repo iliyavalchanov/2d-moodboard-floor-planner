@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useCanvasStore } from "@/stores/useCanvasStore";
 import { useMoodboardStore } from "@/stores/useMoodboardStore";
+import { isImageUrl } from "@/utils/clipboard";
 
 interface Props {
   onClose: () => void;
@@ -11,20 +12,51 @@ interface Props {
 export default function ImageUrlModal({ onClose }: Props) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!url.trim()) return;
+      const trimmed = url.trim();
+      if (!trimmed) return;
 
       setLoading(true);
+      setError("");
+
       const { viewport, stageSize } = useCanvasStore.getState();
       const centerX = (stageSize.width / 2 - viewport.x) / viewport.scale;
       const centerY = (stageSize.height / 2 - viewport.y) / viewport.scale;
 
-      useMoodboardStore.getState().addImage(url.trim(), centerX, centerY, 200, 200);
-      setLoading(false);
-      onClose();
+      // Direct image URL — add immediately
+      if (isImageUrl(trimmed)) {
+        useMoodboardStore.getState().addImage(trimmed, centerX, centerY, 200, 200);
+        setLoading(false);
+        onClose();
+        return;
+      }
+
+      // Otherwise try to unfurl the page for an OG image
+      try {
+        const res = await fetch(`/api/unfurl?url=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.imageUrl) {
+          setError(data.error || "Could not find an image on that page");
+          setLoading(false);
+          return;
+        }
+
+        const displayTitle = data.title || data.domain || "";
+        useMoodboardStore.getState().addImage(data.imageUrl, centerX, centerY, 200, 200, {
+          sourceUrl: trimmed,
+          title: displayTitle,
+        });
+        setLoading(false);
+        onClose();
+      } catch {
+        setError("Failed to fetch page. Check the URL and try again.");
+        setLoading(false);
+      }
     },
     [url, onClose]
   );
@@ -39,11 +71,14 @@ export default function ImageUrlModal({ onClose }: Props) {
           <input
             type="url"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/image.jpg"
+            onChange={(e) => { setUrl(e.target.value); setError(""); }}
+            placeholder="https://example.com/image.jpg or product page URL"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             autoFocus
           />
+          {error && (
+            <p className="mt-2 text-sm text-red-600">{error}</p>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"

@@ -6,6 +6,8 @@ export interface MoodboardImage {
   width: number;
   height: number;
   rotation: number;
+  sourceUrl?: string;
+  title?: string;
 }
 
 export interface MoodboardText {

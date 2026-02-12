@@ -13,7 +13,10 @@ interface MoodboardState {
   images: Record<string, MoodboardImage>;
   texts: Record<string, MoodboardText>;
 
-  addImage: (src: string, x: number, y: number, width: number, height: number) => string;
+  hoveredImageId: string | null;
+  setHoveredImageId: (id: string | null) => void;
+
+  addImage: (src: string, x: number, y: number, width: number, height: number, meta?: { sourceUrl?: string; title?: string }) => string;
   removeImage: (id: string) => void;
   updateImage: (id: string, updates: Partial<MoodboardImage>) => void;
 
@@ -31,11 +34,22 @@ export const useMoodboardStore = create<MoodboardState>()(
   immer((set) => ({
     images: {},
     texts: {},
+    hoveredImageId: null,
 
-    addImage: (src, x, y, width, height) => {
+    setHoveredImageId: (id) => {
+      set((state) => {
+        state.hoveredImageId = id;
+      });
+    },
+
+    addImage: (src, x, y, width, height, meta) => {
       const id = generateId();
       set((state) => {
-        state.images[id] = { id, src, x, y, width, height, rotation: 0 };
+        state.images[id] = {
+          id, src, x, y, width, height, rotation: 0,
+          ...(meta?.sourceUrl && { sourceUrl: meta.sourceUrl }),
+          ...(meta?.title && { title: meta.title }),
+        };
       });
       return id;
     },

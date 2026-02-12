@@ -20,6 +20,16 @@ export async function readImagesFromClipboard(
   return urls;
 }
 
+/** Check if a string looks like any http/https URL */
+export function isUrl(text: string): boolean {
+  try {
+    const url = new URL(text.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /** Check if a string looks like an image URL */
 export function isImageUrl(text: string): boolean {
   try {

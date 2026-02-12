@@ -14,6 +14,7 @@ interface Props {
 export default function MoodboardImage({ image }: Props) {
   const select = useSelectionStore((s) => s.select);
   const updateImage = useMoodboardStore((s) => s.updateImage);
+  const setHoveredImageId = useMoodboardStore((s) => s.setHoveredImageId);
 
   // Try with crossOrigin first, fall back to proxy
   const [src, setSrc] = useState(image.src);
@@ -27,6 +28,7 @@ export default function MoodboardImage({ image }: Props) {
 
   return (
     <KonvaImage
+      id={image.id}
       image={img}
       x={image.x}
       y={image.y}
@@ -52,6 +54,29 @@ export default function MoodboardImage({ image }: Props) {
         });
         node.scaleX(1);
         node.scaleY(1);
+      }}
+      onMouseEnter={(e) => {
+        if (image.sourceUrl) {
+          setHoveredImageId(image.id);
+          const stage = e.target.getStage();
+          if (stage) {
+            stage.container().style.cursor = "pointer";
+          }
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (image.sourceUrl) {
+          setHoveredImageId(null);
+          const stage = e.target.getStage();
+          if (stage) {
+            stage.container().style.cursor = "";
+          }
+        }
+      }}
+      onDblClick={() => {
+        if (image.sourceUrl) {
+          window.open(image.sourceUrl, "_blank", "noopener,noreferrer");
+        }
       }}
     />
   );
