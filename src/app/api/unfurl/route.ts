@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
+/** Extract content from a meta tag by property or name */
+function extractMeta(html: string, property: string): string | null {
+  // Match property="..." content="..." (either order, handles newlines)
+  const byProp = new RegExp(
+    `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`,
+    "is"
+  );
+  const byContent = new RegExp(
+    `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`,
+    "is"
+  );
+  return byProp.exec(html)?.[1] ?? byContent.exec(html)?.[1] ?? null;
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
 
@@ -15,10 +29,13 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; MoodboardBot/1.0)",
-        Accept: "text/html",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
-      signal: AbortSignal.timeout(10_000),
+      redirect: "follow",
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {
@@ -30,31 +47,28 @@ export async function GET(request: NextRequest) {
 
     const html = await response.text();
 
-    // Extract og:image
-    const ogImageMatch = html.match(
-      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
-    ) ?? html.match(
-      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
-    );
+    // Extract OG metadata
+    const ogImage = extractMeta(html, "og:image");
+    const ogTitle = extractMeta(html, "og:title");
+    const ogDescription = extractMeta(html, "og:description");
 
-    if (!ogImageMatch) {
+    // Fallback title to <title> tag
+    const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = ogTitle ?? titleTagMatch?.[1]?.trim() ?? "";
+
+    // Fallback description to meta description
+    const metaDesc = extractMeta(html, "description");
+    const description = ogDescription ?? metaDesc ?? "";
+
+    if (!ogImage) {
       return NextResponse.json(
         { error: "No og:image found on page" },
         { status: 404 }
       );
     }
 
-    // Extract og:title (fallback to <title>)
-    const ogTitleMatch = html.match(
-      /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i
-    ) ?? html.match(
-      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i
-    );
-    const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const title = ogTitleMatch?.[1] ?? titleTagMatch?.[1]?.trim() ?? "";
-
     // Resolve relative image URLs
-    let imageUrl = ogImageMatch[1];
+    let imageUrl = ogImage;
     if (imageUrl.startsWith("//")) {
       imageUrl = parsedUrl.protocol + imageUrl;
     } else if (imageUrl.startsWith("/")) {
@@ -64,7 +78,7 @@ export async function GET(request: NextRequest) {
     const domain = parsedUrl.hostname.replace(/^www\./, "");
 
     return NextResponse.json(
-      { imageUrl, title, domain },
+      { imageUrl, title, description, domain },
       {
         headers: {
           "Cache-Control": "public, max-age=3600",

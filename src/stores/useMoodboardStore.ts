@@ -13,7 +13,7 @@ interface MoodboardState {
   images: Record<string, MoodboardImage>;
   texts: Record<string, MoodboardText>;
 
-  addImage: (src: string, x: number, y: number, width: number, height: number, meta?: { sourceUrl?: string; title?: string }) => string;
+  addImage: (src: string, x: number, y: number, width: number, height: number, meta?: { sourceUrl?: string; title?: string; description?: string }) => string;
   removeImage: (id: string) => void;
   updateImage: (id: string, updates: Partial<MoodboardImage>) => void;
 
@@ -38,6 +38,7 @@ export const useMoodboardStore = create<MoodboardState>()(
           id, src, x, y, width, height, rotation: 0,
           ...(meta?.sourceUrl && { sourceUrl: meta.sourceUrl }),
           ...(meta?.title && { title: meta.title }),
+          ...(meta?.description && { description: meta.description }),
         };
       });
       return id;

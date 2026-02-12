@@ -8,6 +8,7 @@ export interface MoodboardImage {
   rotation: number;
   sourceUrl?: string;
   title?: string;
+  description?: string;
 }
 
 export interface MoodboardText {

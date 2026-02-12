@@ -50,6 +50,7 @@ export default function ImageUrlModal({ onClose }: Props) {
         useMoodboardStore.getState().addImage(data.imageUrl, centerX, centerY, 220, 280, {
           sourceUrl: trimmed,
           title: displayTitle,
+          description: data.description || "",
         });
         setLoading(false);
         onClose();

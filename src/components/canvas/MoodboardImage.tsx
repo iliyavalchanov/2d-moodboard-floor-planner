@@ -135,9 +135,8 @@ export default function MoodboardImage({ image }: Props) {
 
   const domain = extractDomain(image.sourceUrl!);
   const title = image.title || "";
-  // Truncate title to fit roughly
-  const maxTitleChars = Math.floor((width - textPadX * 2) / (titleFontSize * 0.55));
-  const displayTitle = title.length > maxTitleChars ? title.slice(0, maxTitleChars) + "..." : title;
+  const description = image.description || "";
+  const subtitle = description || domain;
 
   return (
     <Group
@@ -191,12 +190,12 @@ export default function MoodboardImage({ image }: Props) {
       />
 
       {/* Title */}
-      {displayTitle && (
+      {title && (
         <Text
           x={textPadX}
           y={imageAreaH + textPadTop}
           width={width - textPadX * 2}
-          text={displayTitle}
+          text={title}
           fontSize={titleFontSize}
           fontStyle="bold"
           fontFamily="Inter, sans-serif"
@@ -206,13 +205,13 @@ export default function MoodboardImage({ image }: Props) {
         />
       )}
 
-      {/* Domain */}
-      {domain && (
+      {/* Description (falls back to domain) */}
+      {subtitle && (
         <Text
           x={textPadX}
           y={imageAreaH + textPadTop + titleFontSize + Math.round(footerH * 0.06)}
           width={width - textPadX * 2}
-          text={domain}
+          text={subtitle}
           fontSize={domainFontSize}
           fontFamily="Inter, sans-serif"
           fill={CARD_DOMAIN_COLOR}

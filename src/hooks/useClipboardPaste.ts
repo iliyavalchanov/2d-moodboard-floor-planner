@@ -49,7 +49,7 @@ export function useClipboardPaste() {
         try {
           const res = await fetch(`/api/unfurl?url=${encodeURIComponent(text.trim())}`);
           if (!res.ok) return;
-          const { imageUrl, title, domain } = await res.json();
+          const { imageUrl, title, description, domain } = await res.json();
           if (!imageUrl) return;
 
           const { viewport, stageSize } = useCanvasStore.getState();
@@ -62,6 +62,7 @@ export function useClipboardPaste() {
           useMoodboardStore.getState().addImage(imageUrl, centerX, centerY, 220, 280, {
             sourceUrl: text.trim(),
             title: displayTitle,
+            description: description || "",
           });
         } catch {
           // Silent failure — matches existing pattern
