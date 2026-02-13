@@ -1,8 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
 
 /** Extract content from a meta tag by property or name */
 function extractMeta(html: string, property: string): string | null {
@@ -17,24 +13,57 @@ function extractMeta(html: string, property: string): string | null {
   return byProp.exec(html)?.[1] ?? byContent.exec(html)?.[1] ?? null;
 }
 
+/** Check if fetched HTML is a WAF block page rather than real content */
+function isBlockPage(html: string): boolean {
+  const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim().toLowerCase() ?? "";
+  return (
+    title.includes("access denied") ||
+    title.includes("forbidden") ||
+    title.includes("blocked") ||
+    title.includes("just a moment") // Cloudflare challenge
+  );
+}
+
+/** Parse OG metadata from HTML string */
+function parseOgMeta(html: string, parsedUrl: URL) {
+  const ogImage = extractMeta(html, "og:image");
+  const ogTitle = extractMeta(html, "og:title");
+  const ogDescription = extractMeta(html, "og:description");
+
+  const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const title = ogTitle ?? titleTagMatch?.[1]?.trim() ?? "";
+
+  const metaDesc = extractMeta(html, "description");
+  const description = ogDescription ?? metaDesc ?? "";
+
+  let imageUrl: string | null = ogImage;
+  if (imageUrl?.startsWith("//")) {
+    imageUrl = parsedUrl.protocol + imageUrl;
+  } else if (imageUrl?.startsWith("/")) {
+    imageUrl = parsedUrl.origin + imageUrl;
+  }
+
+  return { imageUrl, title, description };
+}
+
 /**
- * Fetch HTML via curl — bypasses TLS fingerprinting that causes Node.js
- * fetch to be blocked by WAFs (e.g. Akamai on ikea.bg).
+ * Fallback: use microlink.io metadata API for WAF-blocked sites.
+ * Free tier, no API key needed.
  */
-async function fetchHtmlWithCurl(url: string): Promise<string> {
-  const { stdout } = await execFileAsync("curl", [
-    "-s", "-L",
-    "--max-time", "15",
-    "--compressed",
-    "-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "-H", "Accept-Language: en-US,en;q=0.9",
-    "-H", "Sec-Fetch-Dest: document",
-    "-H", "Sec-Fetch-Mode: navigate",
-    "-H", "Sec-Fetch-Site: none",
-    url,
-  ], { maxBuffer: 10 * 1024 * 1024 });
-  return stdout;
+async function fetchViaMicrolink(url: string) {
+  const res = await fetch(
+    `https://api.microlink.io/?url=${encodeURIComponent(url)}`,
+    { signal: AbortSignal.timeout(10_000) }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.status !== "success") return null;
+
+  return {
+    imageUrl: data.data?.image?.url ?? null,
+    title: data.data?.title ?? "",
+    description: data.data?.description ?? "",
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -50,9 +79,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid protocol" }, { status: 400 });
     }
 
-    // Try Node fetch first, fall back to curl for WAF-blocked sites
-    let html: string | null = null;
+    const domain = parsedUrl.hostname.replace(/^www\./, "");
+    let result: { imageUrl: string | null; title: string; description: string } | null = null;
 
+    // 1. Try direct fetch
     try {
       const response = await fetch(url, {
         headers: {
@@ -62,64 +92,40 @@ export async function GET(request: NextRequest) {
           "Accept-Language": "en-US,en;q=0.9",
         },
         redirect: "follow",
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (response.ok) {
-        html = await response.text();
+        const html = await response.text();
+        if (!isBlockPage(html)) {
+          const meta = parseOgMeta(html, parsedUrl);
+          if (meta.imageUrl || meta.title) {
+            result = meta;
+          }
+        }
       }
     } catch {
-      // Will try curl fallback
+      // Will try fallback
     }
 
-    // Curl fallback — different TLS fingerprint bypasses WAFs
-    if (!html) {
+    // 2. Fallback to microlink.io for WAF-blocked or failed fetches
+    if (!result) {
       try {
-        html = await fetchHtmlWithCurl(url);
+        result = await fetchViaMicrolink(url);
       } catch {
-        // curl also failed
+        // microlink also failed
       }
     }
 
-    if (!html) {
+    if (!result || (!result.imageUrl && !result.title)) {
       return NextResponse.json(
-        { error: "Failed to fetch page" },
-        { status: 502 }
-      );
-    }
-
-    // Extract OG metadata
-    const ogImage = extractMeta(html, "og:image");
-    const ogTitle = extractMeta(html, "og:title");
-    const ogDescription = extractMeta(html, "og:description");
-
-    // Fallback title to <title> tag
-    const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const title = ogTitle ?? titleTagMatch?.[1]?.trim() ?? "";
-
-    // Fallback description to meta description
-    const metaDesc = extractMeta(html, "description");
-    const description = ogDescription ?? metaDesc ?? "";
-
-    // Resolve relative image URLs
-    let imageUrl: string | null = ogImage;
-    if (imageUrl?.startsWith("//")) {
-      imageUrl = parsedUrl.protocol + imageUrl;
-    } else if (imageUrl?.startsWith("/")) {
-      imageUrl = parsedUrl.origin + imageUrl;
-    }
-
-    const domain = parsedUrl.hostname.replace(/^www\./, "");
-
-    if (!imageUrl && !title) {
-      return NextResponse.json(
-        { error: "No metadata found on page" },
+        { error: "Could not extract metadata from page" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(
-      { imageUrl: imageUrl ?? null, title, description, domain },
+      { imageUrl: result.imageUrl, title: result.title, description: result.description, domain },
       {
         headers: {
           "Cache-Control": "public, max-age=3600",
