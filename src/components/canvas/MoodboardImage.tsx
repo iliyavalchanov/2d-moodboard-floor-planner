@@ -33,7 +33,7 @@ export default function MoodboardImage({ image }: Props) {
 
   // Try with crossOrigin first, fall back to proxy (skip if no src)
   const [src, setSrc] = useState(image.src);
-  const [img, status] = useImage(src || undefined, "anonymous");
+  const [img, status] = useImage(src || null, "anonymous");
 
   useEffect(() => {
     if (status === "failed" && src && src === image.src && !image.src.startsWith("data:")) {
