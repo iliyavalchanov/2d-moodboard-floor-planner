@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Force dynamic — never cache this route at the CDN level
+export const dynamic = "force-dynamic";
+
 /** Extract content from a meta tag by property or name */
 function extractMeta(html: string, property: string): string | null {
   const byProp = new RegExp(
@@ -13,19 +16,13 @@ function extractMeta(html: string, property: string): string | null {
   return byProp.exec(html)?.[1] ?? byContent.exec(html)?.[1] ?? null;
 }
 
-/** Check if fetched HTML is a WAF block page rather than real content */
-function isBlockPage(html: string): boolean {
-  const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim().toLowerCase() ?? "";
-  return (
-    title.includes("access denied") ||
-    title.includes("forbidden") ||
-    title.includes("blocked") ||
-    title.includes("just a moment") // Cloudflare challenge
-  );
+/** Check if HTML looks like a real page with OG metadata (not a WAF block page) */
+function hasValidOgData(html: string): boolean {
+  return !!extractMeta(html, "og:image") || !!extractMeta(html, "og:title");
 }
 
 /** Parse OG metadata from HTML string */
-function parseOgMeta(html: string, parsedUrl: URL) {
+function parseOgMeta(html: string, origin: string) {
   const ogImage = extractMeta(html, "og:image");
   const ogTitle = extractMeta(html, "og:title");
   const ogDescription = extractMeta(html, "og:description");
@@ -38,31 +35,31 @@ function parseOgMeta(html: string, parsedUrl: URL) {
 
   let imageUrl: string | null = ogImage;
   if (imageUrl?.startsWith("//")) {
-    imageUrl = parsedUrl.protocol + imageUrl;
+    imageUrl = "https:" + imageUrl;
   } else if (imageUrl?.startsWith("/")) {
-    imageUrl = parsedUrl.origin + imageUrl;
+    imageUrl = origin + imageUrl;
   }
 
   return { imageUrl, title, description };
 }
 
 /**
- * Fallback: use microlink.io metadata API for WAF-blocked sites.
- * Free tier, no API key needed.
+ * Fetch metadata via microlink.io — handles WAF-protected sites (IKEA, etc.)
+ * using headless browser rendering. Free tier: 250 req/day.
  */
 async function fetchViaMicrolink(url: string) {
   const res = await fetch(
     `https://api.microlink.io/?url=${encodeURIComponent(url)}`,
-    { signal: AbortSignal.timeout(10_000) }
+    { cache: "no-store", signal: AbortSignal.timeout(12_000) }
   );
   if (!res.ok) return null;
   const data = await res.json();
   if (data.status !== "success") return null;
 
   return {
-    imageUrl: data.data?.image?.url ?? null,
-    title: data.data?.title ?? "",
-    description: data.data?.description ?? "",
+    imageUrl: (data.data?.image?.url as string) ?? null,
+    title: (data.data?.title as string) ?? "",
+    description: (data.data?.description as string) ?? "",
   };
 }
 
@@ -82,7 +79,7 @@ export async function GET(request: NextRequest) {
     const domain = parsedUrl.hostname.replace(/^www\./, "");
     let result: { imageUrl: string | null; title: string; description: string } | null = null;
 
-    // 1. Try direct fetch
+    // 1. Try direct fetch (fast path for sites that don't block server requests)
     try {
       const response = await fetch(url, {
         headers: {
@@ -92,48 +89,29 @@ export async function GET(request: NextRequest) {
           "Accept-Language": "en-US,en;q=0.9",
         },
         redirect: "follow",
-        signal: AbortSignal.timeout(8_000),
+        cache: "no-store",
+        signal: AbortSignal.timeout(6_000),
       });
 
       if (response.ok) {
         const html = await response.text();
-        if (!isBlockPage(html)) {
-          const meta = parseOgMeta(html, parsedUrl);
+        if (hasValidOgData(html)) {
+          const meta = parseOgMeta(html, parsedUrl.origin);
           if (meta.imageUrl) {
             result = meta;
           }
         }
       }
     } catch {
-      // Will try fallback
+      // Direct fetch failed — will try microlink
     }
 
-    // 2. Fallback to microlink.io when direct fetch fails, is blocked, or has no image
+    // 2. Microlink fallback — handles WAF-blocked sites via headless browser
     if (!result) {
       try {
         result = await fetchViaMicrolink(url);
       } catch {
-        // microlink also failed
-      }
-    }
-
-    // 3. If microlink also failed, re-try direct fetch for title-only cards
-    if (!result) {
-      try {
-        const response = await fetch(url, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          redirect: "follow",
-          signal: AbortSignal.timeout(5_000),
-        });
-        if (response.ok) {
-          const html = await response.text();
-          const meta = parseOgMeta(html, parsedUrl);
-          if (meta.title && !isBlockPage(html)) {
-            result = meta;
-          }
-        }
-      } catch {
-        // All attempts failed
+        // microlink failed
       }
     }
 
@@ -146,11 +124,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { imageUrl: result.imageUrl, title: result.title, description: result.description, domain },
-      {
-        headers: {
-          "Cache-Control": "public, max-age=3600",
-        },
-      }
     );
   } catch {
     return NextResponse.json(
