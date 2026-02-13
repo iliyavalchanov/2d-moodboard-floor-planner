@@ -92,14 +92,14 @@ export async function GET(request: NextRequest) {
           "Accept-Language": "en-US,en;q=0.9",
         },
         redirect: "follow",
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(8_000),
       });
 
       if (response.ok) {
         const html = await response.text();
         if (!isBlockPage(html)) {
           const meta = parseOgMeta(html, parsedUrl);
-          if (meta.imageUrl || meta.title) {
+          if (meta.imageUrl) {
             result = meta;
           }
         }
@@ -108,12 +108,32 @@ export async function GET(request: NextRequest) {
       // Will try fallback
     }
 
-    // 2. Fallback to microlink.io for WAF-blocked or failed fetches
+    // 2. Fallback to microlink.io when direct fetch fails, is blocked, or has no image
     if (!result) {
       try {
         result = await fetchViaMicrolink(url);
       } catch {
         // microlink also failed
+      }
+    }
+
+    // 3. If microlink also failed, re-try direct fetch for title-only cards
+    if (!result) {
+      try {
+        const response = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          redirect: "follow",
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (response.ok) {
+          const html = await response.text();
+          const meta = parseOgMeta(html, parsedUrl);
+          if (meta.title && !isBlockPage(html)) {
+            result = meta;
+          }
+        }
+      } catch {
+        // All attempts failed
       }
     }
 
