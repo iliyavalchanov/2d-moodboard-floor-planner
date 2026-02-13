@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Prevent Safari/mobile browsers from intercepting touch gestures on the canvas */
+.konvajs-content {
+  touch-action: none;
+}

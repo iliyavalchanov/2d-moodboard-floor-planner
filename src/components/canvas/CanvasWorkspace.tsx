@@ -59,7 +59,7 @@ export default function CanvasWorkspace() {
 
   const forceProjectPicker = !!user && !currentProject && !projectLoading;
 
-  const { handleWheel } = usePanZoom();
+  const { handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd } = usePanZoom();
   const wallDrawing = useWallDrawing();
   const { menu, show: showContextMenu, hide: hideContextMenu } = useContextMenu();
 
@@ -215,6 +215,9 @@ export default function CanvasWorkspace() {
           scaleY={viewport.scale}
           draggable={toolMode === ToolMode.Select || spaceHeld}
           onWheel={handleWheel}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           onClick={handleStageClick}
           onMouseMove={handleStageMouseMove}
           onDblClick={handleStageDblClick}
