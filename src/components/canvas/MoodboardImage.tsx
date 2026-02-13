@@ -31,15 +31,16 @@ export default function MoodboardImage({ image }: Props) {
   const select = useSelectionStore((s) => s.select);
   const updateImage = useMoodboardStore((s) => s.updateImage);
 
-  // Try with crossOrigin first, fall back to proxy (skip if no src)
-  const [src, setSrc] = useState(image.src);
-  const [img, status] = useImage(src || null, "anonymous");
+  // Try with crossOrigin first, fall back to proxy
+  const hasSrc = !!image.src;
+  const [src, setSrc] = useState(image.src || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+  const [img, status] = useImage(src, "anonymous");
 
   useEffect(() => {
-    if (status === "failed" && src && src === image.src && !image.src.startsWith("data:")) {
+    if (hasSrc && status === "failed" && src === image.src && !image.src.startsWith("data:")) {
       setSrc(`/api/proxy-image?url=${encodeURIComponent(image.src)}`);
     }
-  }, [status, src, image.src]);
+  }, [status, src, image.src, hasSrc]);
 
   const isCard = !!image.sourceUrl;
 
@@ -171,7 +172,7 @@ export default function MoodboardImage({ image }: Props) {
       <Rect width={width} height={height} fill="#FFFFFF" />
 
       {/* Product image (contain-fit) */}
-      {img && (
+      {img && hasSrc && (
         <KonvaImage
           image={img}
           x={imgCrop.x}
