@@ -31,12 +31,12 @@ export default function MoodboardImage({ image }: Props) {
   const select = useSelectionStore((s) => s.select);
   const updateImage = useMoodboardStore((s) => s.updateImage);
 
-  // Try with crossOrigin first, fall back to proxy
+  // Try with crossOrigin first, fall back to proxy (skip if no src)
   const [src, setSrc] = useState(image.src);
-  const [img, status] = useImage(src, "anonymous");
+  const [img, status] = useImage(src || undefined, "anonymous");
 
   useEffect(() => {
-    if (status === "failed" && src === image.src && !image.src.startsWith("data:")) {
+    if (status === "failed" && src && src === image.src && !image.src.startsWith("data:")) {
       setSrc(`/api/proxy-image?url=${encodeURIComponent(image.src)}`);
     }
   }, [status, src, image.src]);

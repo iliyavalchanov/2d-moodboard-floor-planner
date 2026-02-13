@@ -50,7 +50,7 @@ export function useClipboardPaste() {
           const res = await fetch(`/api/unfurl?url=${encodeURIComponent(text.trim())}`);
           if (!res.ok) return;
           const { imageUrl, title, description, domain } = await res.json();
-          if (!imageUrl) return;
+          if (!imageUrl && !title) return;
 
           const { viewport, stageSize } = useCanvasStore.getState();
           const centerX =
@@ -59,7 +59,7 @@ export function useClipboardPaste() {
             (stageSize.height / 2 - viewport.y) / viewport.scale;
 
           const displayTitle = title || domain || "";
-          useMoodboardStore.getState().addImage(imageUrl, centerX, centerY, 220, 280, {
+          useMoodboardStore.getState().addImage(imageUrl || "", centerX, centerY, 220, 280, {
             sourceUrl: text.trim(),
             title: displayTitle,
             description: description || "",

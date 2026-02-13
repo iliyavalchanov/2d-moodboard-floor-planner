@@ -3,7 +3,6 @@ import { immer } from "zustand/middleware/immer";
 import type { WallNode, WallSegment } from "@/types/geometry";
 import { WallType } from "@/types/geometry";
 import { generateId } from "@/utils/ids";
-import { getInitialWallData } from "@/data/floorPlanSeed";
 
 interface WallState {
   nodes: Record<string, WallNode>;
@@ -33,12 +32,10 @@ interface WallState {
   resetState: () => void;
 }
 
-const initialData = getInitialWallData();
-
 export const useWallStore = create<WallState>()(
   immer((set, get) => ({
-    nodes: initialData.nodes,
-    segments: initialData.segments,
+    nodes: {},
+    segments: {},
 
     addNode: (x, y) => {
       const id = generateId();

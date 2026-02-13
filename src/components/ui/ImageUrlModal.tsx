@@ -40,14 +40,14 @@ export default function ImageUrlModal({ onClose }: Props) {
         const res = await fetch(`/api/unfurl?url=${encodeURIComponent(trimmed)}`);
         const data = await res.json();
 
-        if (!res.ok || !data.imageUrl) {
-          setError(data.error || "Could not find an image on that page");
+        if (!res.ok || (!data.imageUrl && !data.title)) {
+          setError(data.error || "Could not find any metadata on that page");
           setLoading(false);
           return;
         }
 
         const displayTitle = data.title || data.domain || "";
-        useMoodboardStore.getState().addImage(data.imageUrl, centerX, centerY, 220, 280, {
+        useMoodboardStore.getState().addImage(data.imageUrl || "", centerX, centerY, 220, 280, {
           sourceUrl: trimmed,
           title: displayTitle,
           description: data.description || "",

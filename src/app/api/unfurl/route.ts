@@ -101,25 +101,25 @@ export async function GET(request: NextRequest) {
     const metaDesc = extractMeta(html, "description");
     const description = ogDescription ?? metaDesc ?? "";
 
-    if (!ogImage) {
-      return NextResponse.json(
-        { error: "No og:image found on page" },
-        { status: 404 }
-      );
-    }
-
     // Resolve relative image URLs
-    let imageUrl = ogImage;
-    if (imageUrl.startsWith("//")) {
+    let imageUrl: string | null = ogImage;
+    if (imageUrl?.startsWith("//")) {
       imageUrl = parsedUrl.protocol + imageUrl;
-    } else if (imageUrl.startsWith("/")) {
+    } else if (imageUrl?.startsWith("/")) {
       imageUrl = parsedUrl.origin + imageUrl;
     }
 
     const domain = parsedUrl.hostname.replace(/^www\./, "");
 
+    if (!imageUrl && !title) {
+      return NextResponse.json(
+        { error: "No metadata found on page" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
-      { imageUrl, title, description, domain },
+      { imageUrl: imageUrl ?? null, title, description, domain },
       {
         headers: {
           "Cache-Control": "public, max-age=3600",
