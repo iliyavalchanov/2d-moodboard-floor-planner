@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Masha 2D Planner",
+  title: "Masha 2D Plan",
   description: "Interior design floor planner and moodboard",
 };
 
